@@ -1,6 +1,7 @@
 using UnityEngine;
 using Unity.Netcode;
 using UnityEngine.InputSystem;
+using TMPro;
 
 public class PlayerMovement : NetworkBehaviour
 {
@@ -11,13 +12,25 @@ public class PlayerMovement : NetworkBehaviour
     private Vector2 moveInput;
     private Vector2 lookInput;
     private bool isRightMouseHeld;
-    
-    private Rigidbody rb;
+
+    private NetworkVariable<int> score = new NetworkVariable<int>(0, NetworkVariableReadPermission.Owner, NetworkVariableWritePermission.Server);
+    public TMP_Text scoreText;
 
     private void Awake()
     {
         playercontrols = new PlayerControls();
-        rb = GetComponent<Rigidbody>();
+    }
+    
+    private void Start()
+    {
+        if (IsOwner)
+        {
+            GameObject scoreTextObject = GameObject.FindWithTag("ScoreText");
+            if (scoreTextObject != null)
+            {
+                scoreText = scoreTextObject.GetComponent<TMP_Text>();
+            }
+        }
     }
 
     private void OnEnable()
@@ -63,5 +76,21 @@ public class PlayerMovement : NetworkBehaviour
 
         float yaw = lookInput.x * rotationSpeed * Time.deltaTime;
         transform.Rotate(0, yaw, 0);
+    }
+    
+    [ServerRpc]
+    public void AddScoreServerRpc(ServerRpcParams serverRpcParams = default)
+    {
+        score.Value++;
+        UpdateScoreTextServerRpc();
+    }
+    
+    [ServerRpc]
+    private void UpdateScoreTextServerRpc(ServerRpcParams serverRpcParams = default)
+    {
+        if (scoreText != null)
+        {
+            scoreText.text = $"Score: {score.Value}";
+        }
     }
 }
